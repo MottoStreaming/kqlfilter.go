@@ -3,6 +3,7 @@ package kqlfilter
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +41,8 @@ type FilterToSpannerFieldConfig struct {
 	ColumnName string
 	// SQL column type. Defaults to FilterToSpannerFieldColumnTypeString.
 	ColumnType FilterToSpannerFieldColumnType
+	// If true, the filter must at least contain this field. Will not apply to empty filters. Defaults to false.
+	Required bool
 	// Allow prefix matching when a wildcard (`*`) is present at the end of a string.
 	// Only applicable for FilterToSpannerFieldColumnTypeString. Defaults to false.
 	AllowPrefixMatch bool
@@ -146,7 +149,6 @@ func (f FilterToSpannerFieldConfig) convertValue(value string) (any, error) {
 		return intVal, nil
 
 	case FilterToSpannerFieldColumnTypeFloat64:
-
 		doubleVal, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid FLOAT64 value: %w", err)
@@ -335,6 +337,21 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 		condAnds = append(condAnds, fmt.Sprintf(whereClauseFormat, columnName, operator, paramName))
 		params[paramName] = mappedValue
 		paramIndex++
+	}
+
+	for field, fieldConfig := range fieldConfigs {
+		if fieldConfig.Required {
+			found := false
+			for _, clause := range f.Clauses {
+				if clause.Field == field || (slices.Contains(fieldConfig.Aliases, clause.Field)) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, nil, fmt.Errorf("required field %s missing", field)
+			}
+		}
 	}
 
 	return condAnds, params, nil
