@@ -108,6 +108,59 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			"one field with not operator",
+			"not field:value",
+			false,
+			Filter{
+				Clauses: []Clause{
+					{
+						Field:    "field",
+						Operator: "!=",
+						Values:   []string{"value"},
+					},
+				},
+			},
+		},
+		{
+			"one field with not operator and an empty value",
+			`not field:""`,
+			false,
+			Filter{
+				Clauses: []Clause{
+					{
+						Field:    "field",
+						Operator: "!=",
+						Values:   []string{""},
+					},
+				},
+			},
+		},
+		{
+			"one field with not operator and an unrelated equality clause",
+			"not field:value and another:second",
+			false,
+			Filter{
+				Clauses: []Clause{
+					{
+						Field:    "field",
+						Operator: "!=",
+						Values:   []string{"value"},
+					},
+					{
+						Field:    "another",
+						Operator: "=",
+						Values:   []string{"second"},
+					},
+				},
+			},
+		},
+		{
+			"negation applied to an and node - not supported due to implicit resulting OR clause",
+			"not (field:value and another:second)",
+			true,
+			Filter{},
+		},
+		{
 			"one field repeated to create a range",
 			"amount>=1 and amount<5",
 			false,

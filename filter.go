@@ -89,6 +89,8 @@ func convertToFilter(ast Node) (Filter, error) {
 		return convertIsNode(n)
 	case *RangeNode:
 		return convertRangeNode(n)
+	case *NotNode:
+		return convertNotNode(n)
 	default:
 		return Filter{}, fmt.Errorf("unsupported node type %T", ast)
 	}
@@ -103,6 +105,8 @@ func convertAndNode(ast *AndNode) (Filter, error) {
 		switch n := node.(type) {
 		case *IsNode:
 			f, err = convertIsNode(n)
+		case *NotNode:
+			f, err = convertNotNode(n)
 		case *RangeNode:
 			f, err = convertRangeNode(n)
 		default:
@@ -145,6 +149,31 @@ func convertIsNode(ast *IsNode) (Filter, error) {
 	return Filter{
 		Clauses: []Clause{clause},
 	}, nil
+}
+
+func convertNotNode(ast *NotNode) (Filter, error) {
+	var err error
+	var filter Filter
+	switch n := ast.Expr.(type) {
+	case *IsNode:
+		filter, err = convertIsNode(n)
+	default:
+		return Filter{}, fmt.Errorf("unsupported node type %T", ast.Expr)
+	}
+
+	if err != nil {
+		return Filter{}, err
+	}
+
+	for i := range filter.Clauses {
+		if filter.Clauses[i].Operator == "=" {
+			filter.Clauses[i].Operator = "!="
+		} else {
+			return Filter{}, fmt.Errorf("cannot support negation on operator %s", filter.Clauses[i].Operator)
+		}
+	}
+
+	return filter, nil
 }
 
 func convertRangeNode(ast *RangeNode) (Filter, error) {
