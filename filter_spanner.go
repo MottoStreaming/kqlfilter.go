@@ -43,6 +43,14 @@ type FilterToSpannerFieldConfig struct {
 	ColumnType FilterToSpannerFieldColumnType
 	// If true, the filter must at least contain this field. Will not apply to empty filters. Defaults to false.
 	Required bool
+	// A list of other fields that must be present in the filter for this field to be allowed in the filter.
+	// The field names must match the keys in the fieldConfigs map. Defaults to an empty list.
+	//
+	// For example, if this field is `expiration_time`, and `user_id` is in `Requires`, then the filter must contain
+	// both `expiration_time` and `user_id` for the filter to be considered valid.
+	//
+	// This option is typically useful to force the query to follow the structure of a Spanner index.
+	Requires []string
 	// Allow prefix matching when a wildcard (`*`) is present at the end of a string.
 	// Only applicable for FilterToSpannerFieldColumnTypeString. Defaults to false.
 	AllowPrefixMatch bool
@@ -350,6 +358,21 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 			}
 			if !found {
 				return nil, nil, fmt.Errorf("required field %s missing", field)
+			}
+		}
+
+		if len(fieldConfig.Requires) > 0 {
+			for _, requiredField := range fieldConfig.Requires {
+				found := false
+				for _, clause := range f.Clauses {
+					if clause.Field == requiredField || (slices.Contains(fieldConfig.Aliases, clause.Field)) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return nil, nil, fmt.Errorf("%s can only be used in this filter in combination with %s", field, requiredField)
+				}
 			}
 		}
 	}

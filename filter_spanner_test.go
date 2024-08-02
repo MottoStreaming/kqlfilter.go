@@ -487,6 +487,39 @@ func TestToSpannerSQL(t *testing.T) {
 			"",
 			map[string]any{},
 		},
+		{
+			"requires other field - field present",
+			"video_id:abcd and type_id:xyz", map[string]FilterToSpannerFieldConfig{
+				"video_id": {
+					ColumnName: "VideoID",
+					ColumnType: FilterToSpannerFieldColumnTypeString,
+					Requires:   []string{"type_id"},
+				},
+				"type_id": {
+					ColumnName: "TypeID",
+					ColumnType: FilterToSpannerFieldColumnTypeString,
+				},
+			},
+			false,
+			"(VideoID=@KQL0 AND TypeID=@KQL1)",
+			map[string]any{
+				"KQL0": "abcd",
+				"KQL1": "xyz",
+			},
+		},
+		{
+			"requires other field - field absent",
+			"video_id:abcd", map[string]FilterToSpannerFieldConfig{
+				"video_id": {
+					ColumnName: "VideoID",
+					ColumnType: FilterToSpannerFieldColumnTypeString,
+					Requires:   []string{"type_id"},
+				},
+			},
+			true,
+			"",
+			map[string]any{},
+		},
 	}
 
 	for _, test := range testCases {
