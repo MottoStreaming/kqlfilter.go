@@ -3,6 +3,7 @@ package elastic
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -190,6 +191,19 @@ func (q *QueryGenerator) convertNodeToQuery(node kqlfilter.Node, prefix string) 
 				id: rq,
 			},
 		}, nil
+	case *kqlfilter.LiteralNode:
+		if !slices.Contains([]string{"true", "false"}, n.Value) {
+			return types.Query{}, fmt.Errorf("only boolean literals are supported; %s", n.Value)
+		}
+		if n.Value == "true" {
+			return types.Query{
+				MatchAll: &types.MatchAllQuery{},
+			}, nil
+		} else {
+			return types.Query{
+				MatchNone: &types.MatchNoneQuery{},
+			}, nil
+		}
 	default:
 		return types.Query{}, fmt.Errorf("unexpected node type: %T", n)
 	}

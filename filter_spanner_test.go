@@ -36,6 +36,32 @@ func TestToSpannerSQL(t *testing.T) {
 			},
 		},
 		{
+			"one boolean field without value",
+			"false",
+			map[string]FilterToSpannerFieldConfig{},
+			false,
+			"(1=@KQL0)",
+			map[string]any{
+				"KQL0": int64(0),
+			},
+		},
+		{
+			"one boolean field without value and one user id",
+			"false and userId:123",
+			map[string]FilterToSpannerFieldConfig{
+				"userId": {
+					ColumnName: "user_id",
+					ColumnType: FilterToSpannerFieldColumnTypeInt64,
+				},
+			},
+			false,
+			"(1=@KQL0 AND user_id=@KQL1)",
+			map[string]any{
+				"KQL0": int64(0),
+				"KQL1": int64(123),
+			},
+		},
+		{
 			"one integer field and one string field",
 			"userId:12345 email:johnexamplecom",
 			map[string]FilterToSpannerFieldConfig{

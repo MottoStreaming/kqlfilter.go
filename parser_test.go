@@ -33,6 +33,12 @@ func TestParseAST(t *testing.T) {
 			"field=value AND x",
 		},
 		{
+			"boolean without value",
+			"false",
+			false,
+			"false",
+		},
+		{
 			"wildcard",
 			"field:value*",
 			false,

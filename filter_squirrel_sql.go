@@ -14,9 +14,10 @@ import (
 type FilterToSquirrelSqlFieldColumnType int
 
 const (
-	FilterToSquirrelSqlFieldColumnTypeString = iota
-	FilterToSquirrelSqlFieldColumnTypeInt
-	FilterToSquirrelSqlFieldColumnTypeFloat
+	FilterToSquirrelSqlFieldColumnTypeUnspecified FilterToSquirrelSqlFieldColumnType = iota
+	FilterToSquirrelSqlFieldColumnTypeString
+	FilterToSquirrelSqlFieldColumnTypeInt64
+	FilterToSquirrelSqlFieldColumnTypeFloat64
 	FilterToSquirrelSqlFieldColumnTypeBool
 	FilterToSquirrelSqlFieldColumnTypeTimestamp
 )
@@ -125,7 +126,7 @@ func (c *Clause) ToSquirrelSql(stmt sq.SelectBuilder, config FilterToSquirrelSql
 	}
 
 	switch config.ColumnType {
-	case FilterToSquirrelSqlFieldColumnTypeInt:
+	case FilterToSquirrelSqlFieldColumnTypeInt64:
 		nativeValues := make([]int64, 0, len(rawValues))
 		for i, v := range rawValues {
 			nativeValue, err := any2Int64(v)
@@ -135,7 +136,7 @@ func (c *Clause) ToSquirrelSql(stmt sq.SelectBuilder, config FilterToSquirrelSql
 			nativeValues = append(nativeValues, nativeValue)
 		}
 		stmt, err = buildStmtByOperator[int64](stmt, columnName, c.Operator, nativeValues, config)
-	case FilterToSquirrelSqlFieldColumnTypeFloat:
+	case FilterToSquirrelSqlFieldColumnTypeFloat64:
 		nativeValues := make([]float64, 0, len(rawValues))
 		for i, v := range rawValues {
 			nativeValue, err := any2Float64(v)

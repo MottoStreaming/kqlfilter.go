@@ -29,7 +29,7 @@ func TestToSquirrelSql(t *testing.T) {
 			"name:Beau", map[string]FilterToSquirrelSqlFieldConfig{
 				"name": {
 					ColumnName: "name",
-					ColumnType: FilterToSpannerFieldColumnTypeString,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeString,
 				},
 			},
 			nil,
@@ -41,7 +41,7 @@ func TestToSquirrelSql(t *testing.T) {
 			"age:30", map[string]FilterToSquirrelSqlFieldConfig{
 				"age": {
 					ColumnName: "age",
-					ColumnType: FilterToSpannerFieldColumnTypeInt64,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeInt64,
 				},
 			},
 			nil,
@@ -54,7 +54,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"local": {
 					ColumnName: "local",
-					ColumnType: FilterToSpannerFieldColumnTypeBool,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeBool,
 				},
 			},
 			nil,
@@ -67,7 +67,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"weight": {
 					ColumnName: "weight",
-					ColumnType: FilterToSpannerFieldColumnTypeFloat64,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeFloat64,
 				},
 			},
 			nil,
@@ -80,7 +80,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"birthdate": {
 					ColumnName:  "birthdate",
-					ColumnType:  FilterToSpannerFieldColumnTypeTimestamp,
+					ColumnType:  FilterToSquirrelSqlFieldColumnTypeTimestamp,
 					AllowRanges: true,
 				},
 			},
@@ -94,12 +94,12 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"userId": {
 					ColumnName:  "userId",
-					ColumnType:  FilterToSpannerFieldColumnTypeInt64,
+					ColumnType:  FilterToSquirrelSqlFieldColumnTypeInt64,
 					AllowRanges: false,
 				},
 				"birthdate": {
 					ColumnName:  "birthdate",
-					ColumnType:  FilterToSpannerFieldColumnTypeTimestamp,
+					ColumnType:  FilterToSquirrelSqlFieldColumnTypeTimestamp,
 					AllowRanges: true,
 				},
 			},
@@ -113,23 +113,23 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"name": {
 					ColumnName: "name",
-					ColumnType: FilterToSpannerFieldColumnTypeString,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeString,
 				},
 				"age": {
 					ColumnName: "age",
-					ColumnType: FilterToSpannerFieldColumnTypeInt64,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeInt64,
 				},
 				"local": {
 					ColumnName: "local",
-					ColumnType: FilterToSpannerFieldColumnTypeBool,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeBool,
 				},
 				"weight": {
 					ColumnName: "weight",
-					ColumnType: FilterToSpannerFieldColumnTypeFloat64,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeFloat64,
 				},
 				"favorite_day": {
 					ColumnName:          "favorite_day",
-					ColumnType:          FilterToSpannerFieldColumnTypeString,
+					ColumnType:          FilterToSquirrelSqlFieldColumnTypeString,
 					AllowMultipleValues: true,
 				},
 			},
@@ -143,7 +143,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"favorite_day": {
 					ColumnName:          "favorite_day",
-					ColumnType:          FilterToSpannerFieldColumnTypeString,
+					ColumnType:          FilterToSquirrelSqlFieldColumnTypeString,
 					AllowMultipleValues: true,
 				},
 			},
@@ -157,7 +157,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"self_intro": {
 					ColumnName:       "self_intro",
-					ColumnType:       FilterToSpannerFieldColumnTypeString,
+					ColumnType:       FilterToSquirrelSqlFieldColumnTypeString,
 					AllowPrefixMatch: true,
 				},
 			},
@@ -171,7 +171,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"favorite_day": {
 					ColumnName:          "favorite_day",
-					ColumnType:          FilterToSpannerFieldColumnTypeString,
+					ColumnType:          FilterToSquirrelSqlFieldColumnTypeString,
 					AllowMultipleValues: true,
 					MapValue: func(s string) (any, error) {
 						switch s {
@@ -195,7 +195,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"before": {
 					ColumnName:          "create_time",
-					ColumnType:          FilterToSpannerFieldColumnTypeTimestamp,
+					ColumnType:          FilterToSquirrelSqlFieldColumnTypeTimestamp,
 					AllowMultipleValues: true,
 					AllowRanges:         true,
 					MapValue: func(s string) (any, error) {
@@ -218,7 +218,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"age": {
 					ColumnName: "age",
-					ColumnType: FilterToSpannerFieldColumnTypeInt64,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeInt64,
 				},
 			},
 			unknownFieldErr,
@@ -231,7 +231,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"age": {
 					ColumnName: "age",
-					ColumnType: FilterToSpannerFieldColumnTypeInt64,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeInt64,
 				},
 			},
 			valueConvertErr,
@@ -244,7 +244,7 @@ func TestToSquirrelSql(t *testing.T) {
 			map[string]FilterToSquirrelSqlFieldConfig{
 				"age": {
 					ColumnName: "age",
-					ColumnType: FilterToSpannerFieldColumnTypeInt64,
+					ColumnType: FilterToSquirrelSqlFieldColumnTypeInt64,
 				},
 			},
 			valuesNumError,

@@ -12,7 +12,8 @@ import (
 type FilterToSpannerFieldColumnType int
 
 const (
-	FilterToSpannerFieldColumnTypeString = iota
+	FilterToSpannerFieldColumnTypeUnspecified FilterToSpannerFieldColumnType = iota
+	FilterToSpannerFieldColumnTypeString
 	FilterToSpannerFieldColumnTypeInt64
 	FilterToSpannerFieldColumnTypeFloat64
 	FilterToSpannerFieldColumnTypeBool
@@ -176,8 +177,23 @@ func (f FilterToSpannerFieldConfig) convertValue(value string) (any, error) {
 			return nil, fmt.Errorf("invalid TIMESTAMP value: %w", err)
 		}
 		return t, nil
-	default:
+
+	case FilterToSpannerFieldColumnTypeString:
 		return value, nil
+
+	default:
+		// This happens when the field is a boolean literal and there is no associated column type,
+		// because there is no actual key in the fieldConfigs map.
+		switch value {
+		case "0":
+			// Special case for boolean literals - return as int64 so it can be used in a 1=0 comparison
+			return int64(0), nil
+		case "1":
+			// Special case for boolean literals - return as int64 so it can be used in a 1=1 comparison
+			return int64(1), nil
+		default:
+			return value, nil
+		}
 	}
 }
 
@@ -261,7 +277,11 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 			}
 
 			if !ok {
-				return nil, nil, fmt.Errorf("unknown field: %s", clause.Field)
+				if clause.Field == "1" && clause.Operator == "=" && len(clause.Values) == 1 && (clause.Values[0] == "1" || clause.Values[0] == "0") {
+					// Special case for boolean literals
+				} else {
+					return nil, nil, fmt.Errorf("unknown field: %s", clause.Field)
+				}
 			}
 		}
 

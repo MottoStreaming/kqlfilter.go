@@ -2,6 +2,7 @@ package kqlfilter
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -91,8 +92,38 @@ func convertToFilter(ast Node) (Filter, error) {
 		return convertRangeNode(n)
 	case *NotNode:
 		return convertNotNode(n)
+	case *LiteralNode:
+		return convertLiteralNode(n)
 	default:
 		return Filter{}, fmt.Errorf("unsupported node type %T", ast)
+	}
+}
+
+func convertLiteralNode(ast *LiteralNode) (Filter, error) {
+	if !slices.Contains([]string{"true", "false"}, ast.Value) {
+		return Filter{}, fmt.Errorf("only boolean literals are supported; %s", ast.Value)
+	}
+
+	if ast.Value == "true" {
+		return Filter{
+			Clauses: []Clause{
+				{
+					Field:    "1",
+					Operator: "=",
+					Values:   []string{"1"},
+				},
+			},
+		}, nil
+	} else {
+		return Filter{
+			Clauses: []Clause{
+				{
+					Field:    "1",
+					Operator: "=",
+					Values:   []string{"0"},
+				},
+			},
+		}, nil
 	}
 }
 
@@ -109,6 +140,8 @@ func convertAndNode(ast *AndNode) (Filter, error) {
 			f, err = convertNotNode(n)
 		case *RangeNode:
 			f, err = convertRangeNode(n)
+		case *LiteralNode:
+			f, err = convertLiteralNode(n)
 		default:
 			return Filter{}, fmt.Errorf("unsupported node type %T", ast)
 		}

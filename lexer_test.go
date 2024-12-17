@@ -313,6 +313,14 @@ func TestLexer(t *testing.T) {
 				tEOF,
 			},
 		},
+		{
+			"false bool without value",
+			"false",
+			[]item{
+				newItem(itemBool, "false"),
+				tEOF,
+			},
+		},
 	}
 
 	for _, test := range testCases {

@@ -27,6 +27,18 @@ func TestConvertNodeToQuery(t *testing.T) {
 			expectedQueryJSON: `{"term":{"type_id":{"value":"team"}}}`,
 		},
 		{
+			name:              "boolean false without value",
+			input:             "false",
+			expectedError:     nil,
+			expectedQueryJSON: `{"match_none":{}}`,
+		},
+		{
+			name:              "boolean true without value",
+			input:             "true",
+			expectedError:     nil,
+			expectedQueryJSON: `{"match_all":{}}`,
+		},
+		{
 			name:              "renamed field",
 			input:             `start_time:"2000-01-01T00:00:00.000Z"`,
 			expectedError:     nil,
@@ -64,6 +76,27 @@ func TestConvertNodeToQuery(t *testing.T) {
             "value": "true"
           }
         }
+      }
+    ]
+  }
+}`,
+		},
+		{
+			name:          "multiple fields with boolean literal",
+			input:         "type_id:team and false",
+			expectedError: nil,
+			expectedQueryJSON: `{
+  "bool": {
+    "must": [
+      {
+        "term": {
+          "type_id": {
+            "value": "team"
+          }
+        }
+      },
+	  {
+        "match_none": {}
       }
     ]
   }
