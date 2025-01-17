@@ -58,6 +58,11 @@ type FilterToSpannerFieldConfig struct {
 	// Allow suffix matching when a wildcard (`*`) is present at the beginning of a string.
 	// Only applicable for FilterToSpannerFieldColumnTypeString. Defaults to false.
 	AllowSuffixMatch bool
+	// Allow matching of string values against the column in a case-insensitive manner.
+	// Both sides of the condition will be forced to lowercase (e.g. LOWER(column) LIKE LOWER('prefix%')).
+	// This currently only works for string columns in combination with `AllowPrefixMatch` and `AllowSuffixMatch`.
+	// Important: this can have a negative impact on performance, as it will prevent the use of an index on the column.
+	AllowCaseInsensitiveMatch bool
 	// Allow multiple values for this field. Defaults to false.
 	AllowMultipleValues bool
 	// Allow this field to be queried with one or more range operators. Defaults to false.
@@ -303,6 +308,7 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 			return nil, nil, fmt.Errorf("operator %s doesn't support multiple values in field: %s", operator, clause.Field)
 		}
 
+		forceLowercase := false
 		whereClauseFormat := "%s%s@%s"
 		switch operator {
 		case "IN":
@@ -344,14 +350,17 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 
 				if needsPrefixMatch && needsSuffixMatch {
 					operator = " LIKE "
+					forceLowercase = true
 					mappedString = escapePrefixSuffixSpecialChars(mappedString)
 					mappedValue = "%" + mappedString[1:len(mappedString)-1] + "%"
 				} else if needsPrefixMatch {
 					operator = " LIKE "
+					forceLowercase = true
 					mappedString = escapePrefixSuffixSpecialChars(mappedString)
 					mappedValue = mappedString[:len(mappedString)-1] + "%"
 				} else if needsSuffixMatch {
 					operator = " LIKE "
+					forceLowercase = true
 					mappedString = escapePrefixSuffixSpecialChars(mappedString)
 					mappedValue = "%" + mappedString[1:]
 				}
@@ -370,6 +379,9 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 		}
 
 		paramName := fmt.Sprintf("%s%d", "KQL", paramIndex)
+		if forceLowercase && fieldConfig.AllowCaseInsensitiveMatch {
+			whereClauseFormat = "LOWER(%s)%sLOWER(@%s)"
+		}
 		condAnds = append(condAnds, fmt.Sprintf(whereClauseFormat, columnName, operator, paramName))
 		params[paramName] = mappedValue
 		paramIndex++
