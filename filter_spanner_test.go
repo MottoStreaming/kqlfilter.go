@@ -165,6 +165,49 @@ func TestToSpannerSQL(t *testing.T) {
 			},
 		},
 		{
+			"email suffix",
+			"email:*@example.com", map[string]FilterToSpannerFieldConfig{
+				"email": FilterToSpannerFieldConfig{
+					ColumnType:       FilterToSpannerFieldColumnTypeString,
+					AllowSuffixMatch: true,
+				},
+			},
+			false,
+			"(email LIKE @KQL0)",
+			map[string]any{
+				"KQL0": "%@example.com",
+			},
+		},
+		{
+			"email prefix and suffix",
+			"email:*@example.*", map[string]FilterToSpannerFieldConfig{
+				"email": FilterToSpannerFieldConfig{
+					ColumnType:       FilterToSpannerFieldColumnTypeString,
+					AllowPrefixMatch: true,
+					AllowSuffixMatch: true,
+				},
+			},
+			false,
+			"(email LIKE @KQL0)",
+			map[string]any{
+				"KQL0": "%@example.%",
+			},
+		},
+		{
+			"illegal email suffix",
+			"email:*@example.com", map[string]FilterToSpannerFieldConfig{
+				"email": FilterToSpannerFieldConfig{
+					ColumnType:       FilterToSpannerFieldColumnTypeString,
+					AllowPrefixMatch: true,
+				},
+			},
+			false,
+			"(email=@KQL0)",
+			map[string]any{
+				"KQL0": "*@example.com",
+			},
+		},
+		{
 			"email match",
 			"email:john@example.com", map[string]FilterToSpannerFieldConfig{
 				"email": FilterToSpannerFieldConfig{

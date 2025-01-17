@@ -55,6 +55,9 @@ type FilterToSpannerFieldConfig struct {
 	// Allow prefix matching when a wildcard (`*`) is present at the end of a string.
 	// Only applicable for FilterToSpannerFieldColumnTypeString. Defaults to false.
 	AllowPrefixMatch bool
+	// Allow suffix matching when a wildcard (`*`) is present at the beginning of a string.
+	// Only applicable for FilterToSpannerFieldColumnTypeString. Defaults to false.
+	AllowSuffixMatch bool
 	// Allow multiple values for this field. Defaults to false.
 	AllowMultipleValues bool
 	// Allow this field to be queried with one or more range operators. Defaults to false.
@@ -333,21 +336,26 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 
 			whereClauseFormat = "%s %s UNNEST(@%s)"
 		case "=":
-			// Prefix match supported only for single string
+			// Prefix and suffix matching is supported only for single strings
 			mappedString, isString := mappedValue.(string)
-			if fieldConfig.AllowPrefixMatch && isString && strings.HasSuffix(mappedString, "*") && !strings.HasSuffix(mappedString, "\\*") {
-				operator = " LIKE "
-				// escape all instances of \ in the string
-				mappedString = strings.ReplaceAll(mappedString, `\`, `\\`)
-				// escape all instances of _ in the string
-				mappedString = strings.ReplaceAll(mappedString, `_`, `\_`)
-				// escape all instances of % in the string
-				mappedString = strings.ReplaceAll(mappedString, `%`, `\%`)
-				// replace the trailing * with a %
-				mappedValue = mappedString[0:len(mappedString)-1] + "%"
-				break
-			}
+			if isString {
+				needsPrefixMatch := fieldConfig.AllowPrefixMatch && strings.HasSuffix(mappedString, "*") && !strings.HasSuffix(mappedString, "\\*")
+				needsSuffixMatch := fieldConfig.AllowSuffixMatch && strings.HasPrefix(mappedString, "*")
 
+				if needsPrefixMatch && needsSuffixMatch {
+					operator = " LIKE "
+					mappedString = escapePrefixSuffixSpecialChars(mappedString)
+					mappedValue = "%" + mappedString[1:len(mappedString)-1] + "%"
+				} else if needsPrefixMatch {
+					operator = " LIKE "
+					mappedString = escapePrefixSuffixSpecialChars(mappedString)
+					mappedValue = mappedString[:len(mappedString)-1] + "%"
+				} else if needsSuffixMatch {
+					operator = " LIKE "
+					mappedString = escapePrefixSuffixSpecialChars(mappedString)
+					mappedValue = "%" + mappedString[1:]
+				}
+			}
 		case ">=", "<=", ">", "<":
 			if !fieldConfig.AllowRanges {
 				return nil, nil, fmt.Errorf("operator %s not supported for field: %s", operator, clause.Field)
@@ -435,4 +443,11 @@ func uniqueSliceElements[T comparable](inputSlice []T) []T {
 		}
 	}
 	return uniqueSlice
+}
+
+func escapePrefixSuffixSpecialChars(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `_`, `\_`)
+	s = strings.ReplaceAll(s, `%`, `\%`)
+	return s
 }
