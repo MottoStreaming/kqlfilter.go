@@ -74,6 +74,11 @@ type FilterToSpannerFieldConfig struct {
 	// stored in the database. This should return an error when the user is providing a value that is illegal for this
 	// particular field. Defaults to using the provided value as-is.
 	MapValue func(string) (any, error)
+	// When set to true, the field will be ignored in the generated where conditions. This can be useful when you want
+	// to manually process some fields after calling `ToSpannerSQL` (and want to ignore them in the initial filter).
+	// An example of this would when a field would require a complex join that is not auto-generateable by `ToSpannerSQL`.
+	// Defaults to false.
+	Ignore bool
 }
 
 func (f FilterToSpannerFieldConfig) mapValues(values []string) (any, error) {
@@ -291,6 +296,10 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 					return nil, nil, fmt.Errorf("unknown field: %s", clause.Field)
 				}
 			}
+		}
+
+		if fieldConfig.Ignore {
+			continue
 		}
 
 		columnName := fieldConfig.ColumnName

@@ -290,6 +290,23 @@ func TestToSpannerSQL(t *testing.T) {
 			map[string]any{},
 		},
 		{
+			"disallowed second column, but ignored explicitly",
+			"userId:12345 password:qwertyuiop", map[string]FilterToSpannerFieldConfig{
+			"userId": {
+				ColumnName: "u.user_id",
+				ColumnType: FilterToSpannerFieldColumnTypeInt64,
+			},
+			"password": {
+				Ignore: true,
+			},
+		},
+			false,
+			"(u.user_id=@KQL0)",
+			map[string]any{
+				"KQL0": int64(12345),
+			},
+		},
+		{
 			"disallowed field value",
 			"state:deleted", map[string]FilterToSpannerFieldConfig{
 			"state": {
