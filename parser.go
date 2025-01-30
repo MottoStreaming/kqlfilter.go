@@ -241,6 +241,10 @@ func (p *parser) parseExpression() Node {
 			return p.newRangeNode(idItem.pos, idItem.val, rop, value)
 		default:
 			p.backup()
+			// Strip the quotes
+			if strings.HasPrefix(idItem.val, `"`) {
+				idItem.val = idItem.val[1 : len(idItem.val)-1]
+			}
 			return p.newLiteralNode(idItem.pos, idItem.val)
 		}
 

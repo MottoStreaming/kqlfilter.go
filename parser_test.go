@@ -33,6 +33,12 @@ func TestParseAST(t *testing.T) {
 			"field=value AND x",
 		},
 		{
+			"quoted inside parentheses",
+			`field:value1 AND field2:("value2" OR "value3")`,
+			false,
+			"(field=value1 AND field2=(value2 OR value3))",
+		},
+		{
 			"boolean without value",
 			"false",
 			false,
