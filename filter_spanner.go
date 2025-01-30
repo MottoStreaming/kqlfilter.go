@@ -302,6 +302,21 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 			continue
 		}
 
+		if len(fieldConfig.Requires) > 0 {
+			for _, requiredField := range fieldConfig.Requires {
+				found := false
+				for _, c := range f.Clauses {
+					if c.Field == requiredField || (slices.Contains(fieldConfig.Aliases, c.Field)) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return nil, nil, fmt.Errorf("%s can only be used in this filter in combination with %s", clause.Field, requiredField)
+				}
+			}
+		}
+
 		columnName := fieldConfig.ColumnName
 		if columnName == "" {
 			columnName = clause.Field
@@ -407,21 +422,6 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 			}
 			if !found {
 				return nil, nil, fmt.Errorf("required field %s missing", field)
-			}
-		}
-
-		if len(fieldConfig.Requires) > 0 {
-			for _, requiredField := range fieldConfig.Requires {
-				found := false
-				for _, clause := range f.Clauses {
-					if clause.Field == requiredField || (slices.Contains(fieldConfig.Aliases, clause.Field)) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					return nil, nil, fmt.Errorf("%s can only be used in this filter in combination with %s", field, requiredField)
-				}
 			}
 		}
 	}
