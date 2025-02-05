@@ -111,6 +111,48 @@ func TestParseAST(t *testing.T) {
 			"(start_time>2022-02-02T10:30:00.000Z OR start_time<=2022-02-03T10:30:00.000Z)",
 		},
 		{
+			"ranges3",
+			`start_time<"2022-02-03T10:30:00.000Z"`,
+			false,
+			"start_time<2022-02-03T10:30:00.000Z",
+		},
+		{
+			"isContained1 (sports array is a subset of right-hand array)",
+			`sports<@("soccer" AND "basketball" AND "handball")`,
+			false,
+			"sports<@(soccer AND basketball AND handball)",
+		},
+		{
+			"isContained2 (array equality against single value)",
+			`sports<@("soccer")`,
+			false,
+			"sports<@soccer",
+		},
+		{
+			"isContained3 (or operator not supported)",
+			`sports<@("soccer" OR "basketball")`,
+			true,
+			"",
+		},
+		{
+			"isContained4 (disallow further nesting)",
+			`sports<@("soccer" AND ("basketball" OR "handball"))`,
+			true,
+			"",
+		},
+		{
+			"isContained4 (disallow not operator)",
+			`sports<@("soccer" AND NOT "basketball")`,
+			true,
+			"",
+		},
+		{
+			"contains (sports array is a superset of right-hand array)",
+			`sports>@("soccer" AND "basketball" AND "handball")`,
+			false,
+			"sports>@(soccer AND basketball AND handball)",
+		},
+		{
 			"escapes",
 			"field\\(x\\):separated\\:value",
 			false,

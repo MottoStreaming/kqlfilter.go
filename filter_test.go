@@ -94,6 +94,34 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			"contains operator",
+			"sport>@(soccer AND basketball)",
+			false,
+			Filter{
+				Clauses: []Clause{
+					{
+						Field:    "sport",
+						Operator: ">@",
+						Values:   []string{"soccer", "basketball"},
+					},
+				},
+			},
+		},
+		{
+			"contained by operator",
+			"sport<@(soccer AND basketball)",
+			false,
+			Filter{
+				Clauses: []Clause{
+					{
+						Field:    "sport",
+						Operator: "<@",
+						Values:   []string{"soccer", "basketball"},
+					},
+				},
+			},
+		},
+		{
 			"one field with range operator",
 			"field>=value",
 			false,

@@ -67,6 +67,10 @@ type FilterToSpannerFieldConfig struct {
 	AllowMultipleValues bool
 	// Allow this field to be queried with one or more range operators. Defaults to false.
 	AllowRanges bool
+	// Allow this field to be queried with the contains (`>@`) operator. Only works on arrays. Defaults to false.
+	AllowContains bool
+	// Allow this field to be queried with the contained by (`<@`) operator. Only works on arrays. Defaults to false.
+	AllowContainedBy bool
 	// A list of aliases for this field. Can be used if you want to allow users to use different field names to filter
 	// on the same column. Useful e.g. to allow different naming conventions, like `type_id` and `typeId`.
 	Aliases []string
@@ -100,7 +104,7 @@ func (f FilterToSpannerFieldConfig) mapValues(values []string) (any, error) {
 	// turn slice of one into a single value
 	outputValue = unwrapSlice(outputValue)
 
-	if !f.AllowMultipleValues && reflect.TypeOf(outputValue).Kind() == reflect.Slice {
+	if !(f.AllowMultipleValues || f.AllowContains || f.AllowContainedBy) && reflect.TypeOf(outputValue).Kind() == reflect.Slice {
 		return nil, fmt.Errorf("multiple values are not allowed")
 	}
 
@@ -328,14 +332,13 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 
 		operator := clause.Operator
 
-		if len(clause.Values) > 1 && operator != "IN" {
+		if len(clause.Values) > 1 && !slices.Contains([]string{"IN", "<@", ">@"}, operator) {
 			return nil, nil, fmt.Errorf("operator %s doesn't support multiple values in field: %s", operator, clause.Field)
 		}
 
-		forceLowercase := false
-		whereClauseFormat := "%s%s@%s"
+		paramName := fmt.Sprintf("%s%d", "KQL", paramIndex)
 		switch operator {
-		case "IN":
+		case "IN", "<@", ">@":
 			switch fieldConfig.ColumnType {
 			case FilterToSpannerFieldColumnTypeString:
 				mappedValue, err = parseAnyToSlice[string](mappedValue)
@@ -364,8 +367,23 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 				return nil, nil, err
 			}
 
-			whereClauseFormat = "%s %s UNNEST(@%s)"
+			switch operator {
+			case "IN":
+				condAnds = append(condAnds, fmt.Sprintf("%s %s UNNEST(@%s)", columnName, operator, paramName))
+			case "<@":
+				if !fieldConfig.AllowContainedBy {
+					return nil, nil, fmt.Errorf("operator %s not supported for field: %s", operator, clause.Field)
+				}
+				condAnds = append(condAnds, fmt.Sprintf("ARRAY_LENGTH(%s) = ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(%s) AS x WHERE ARRAY_CONTAINS(@%s, x)))", columnName, columnName, paramName))
+			case ">@":
+				if !fieldConfig.AllowContains {
+					return nil, nil, fmt.Errorf("operator %s not supported for field: %s", operator, clause.Field)
+				}
+				condAnds = append(condAnds, fmt.Sprintf("ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(@%s) AS x WHERE ARRAY_CONTAINS(%s, x))) = ARRAY_LENGTH(@%s)", paramName, columnName, paramName))
+			}
 		case "=":
+			var forceLowercase bool
+
 			// Prefix and suffix matching is supported only for single strings
 			mappedString, isString := mappedValue.(string)
 			if isString {
@@ -389,6 +407,12 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 					mappedValue = "%" + mappedString[1:]
 				}
 			}
+
+			if forceLowercase && fieldConfig.AllowCaseInsensitiveMatch {
+				condAnds = append(condAnds, fmt.Sprintf("LOWER(%s)%sLOWER(@%s)", columnName, operator, paramName))
+			} else {
+				condAnds = append(condAnds, fmt.Sprintf("%s%s@%s", columnName, operator, paramName))
+			}
 		case ">=", "<=", ">", "<":
 			if !fieldConfig.AllowRanges {
 				return nil, nil, fmt.Errorf("operator %s not supported for field: %s", operator, clause.Field)
@@ -400,13 +424,10 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 			default:
 				return nil, nil, fmt.Errorf("operator %s not supported for field type %s", operator, fieldConfig.ColumnType)
 			}
+
+			condAnds = append(condAnds, fmt.Sprintf("%s%s@%s", columnName, operator, paramName))
 		}
 
-		paramName := fmt.Sprintf("%s%d", "KQL", paramIndex)
-		if forceLowercase && fieldConfig.AllowCaseInsensitiveMatch {
-			whereClauseFormat = "LOWER(%s)%sLOWER(@%s)"
-		}
-		condAnds = append(condAnds, fmt.Sprintf(whereClauseFormat, columnName, operator, paramName))
 		params[paramName] = mappedValue
 		paramIndex++
 	}

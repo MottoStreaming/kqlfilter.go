@@ -38,6 +38,7 @@ const (
 	NodeRange
 	NodeNested
 	NodeLiteral
+	NodeContainment
 )
 
 // Nodes.
@@ -205,6 +206,50 @@ func (q *RangeNode) String() string {
 }
 
 func (q *RangeNode) writeTo(sb *strings.Builder) {
+	sb.WriteString(q.Identifier)
+	sb.WriteString(q.Operator.String())
+	q.Value.writeTo(sb)
+}
+
+// ContainmentNode holds containment check.
+type ContainmentNode struct {
+	NodeType
+	Pos
+	p          *parser
+	Identifier string
+	Operator   ContainmentOperator
+	Value      Node // The clauses nodes in lexical order.
+}
+
+type ContainmentOperator int
+
+const (
+	ContainmentOperatorContains ContainmentOperator = iota
+	ContainmentOperatorContainedBy
+)
+
+func (o ContainmentOperator) String() string {
+	switch o {
+	case ContainmentOperatorContains:
+		return ">@"
+	case ContainmentOperatorContainedBy:
+		return "<@"
+	default:
+		return "???"
+	}
+}
+
+func (p *parser) newContainmentNode(pos Pos, id string, op ContainmentOperator, value Node) *ContainmentNode {
+	return &ContainmentNode{p: p, NodeType: NodeContainment, Pos: pos, Identifier: id, Operator: op, Value: value}
+}
+
+func (q *ContainmentNode) String() string {
+	var sb strings.Builder
+	q.writeTo(&sb)
+	return sb.String()
+}
+
+func (q *ContainmentNode) writeTo(sb *strings.Builder) {
 	sb.WriteString(q.Identifier)
 	sb.WriteString(q.Operator.String())
 	q.Value.writeTo(sb)

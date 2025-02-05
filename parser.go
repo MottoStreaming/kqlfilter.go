@@ -126,7 +126,7 @@ func (p *parser) parse() {
 
 func (p *parser) parseOr() Node {
 	n := p.newOrNode(p.peek().pos)
-	and := p.parseAnd()
+	and := p.parseAnd(false)
 	n.append(and)
 	// optional space before OR
 	p.eatSpace()
@@ -143,7 +143,7 @@ func (p *parser) parseOr() Node {
 		p.next()
 		p.eatSpace()
 
-		and = p.parseAnd()
+		and = p.parseAnd(false)
 		n.append(and)
 	}
 	// simplify if only one node
@@ -153,10 +153,17 @@ func (p *parser) parseOr() Node {
 	return n
 }
 
-func (p *parser) parseAnd() Node {
+func (p *parser) parseAnd(requireLiterals bool) Node {
 	n := p.newAndNode(p.peek().pos)
-	not := p.parseNot()
-	n.append(not)
+
+	var nn Node
+	if requireLiterals {
+		nn = p.parseValue()
+	} else {
+		nn = p.parseNot()
+	}
+
+	n.append(nn)
 	p.eatSpace()
 	for p.peek().typ == itemAnd {
 		p.currentComplexity++
@@ -167,9 +174,13 @@ func (p *parser) parseAnd() Node {
 
 		p.next()
 		p.eatSpace()
-		not = p.parseNot()
+		if requireLiterals {
+			nn = p.parseValue()
+		} else {
+			nn = p.parseNot()
+		}
 		p.eatSpace()
-		n.append(not)
+		n.append(nn)
 	}
 	// simplify if only one node
 	if len(n.Nodes) == 1 {
@@ -239,6 +250,17 @@ func (p *parser) parseExpression() Node {
 				rop = RangeOperatorGte
 			}
 			return p.newRangeNode(idItem.pos, idItem.val, rop, value)
+		case itemContainmentOperator:
+			p.eatSpace()
+			value := p.parseListOfAndValues()
+			var cop ContainmentOperator
+			switch op.val {
+			case ">@":
+				cop = ContainmentOperatorContains
+			case "<@":
+				cop = ContainmentOperatorContainedBy
+			}
+			return p.newContainmentNode(idItem.pos, idItem.val, cop, value)
 		default:
 			p.backup()
 			// Strip the quotes
@@ -296,6 +318,32 @@ func (p *parser) parseListOfValues() Node {
 		p.eatSpace()
 
 		n := p.parseOr()
+		p.eatSpace()
+		p.expect(itemRightParen, "list of values")
+
+		p.currentDepth--
+		return n
+	}
+	return p.parseValue()
+}
+
+func (p *parser) parseListOfAndValues() Node {
+	peeked := p.peek()
+	if peeked.typ == itemLeftParen {
+		if p.disableComplexExpressions {
+			p.errorf("complex expressions are not allowed")
+		}
+
+		p.currentDepth++
+
+		if p.maxDepth > 0 && p.currentDepth+1 > p.maxDepth {
+			p.errorf("maximum nesting depth exceeded")
+		}
+
+		p.next()
+		p.eatSpace()
+
+		n := p.parseAnd(true)
 		p.eatSpace()
 		p.expect(itemRightParen, "list of values")
 
