@@ -153,11 +153,11 @@ func (p *parser) parseOr() Node {
 	return n
 }
 
-func (p *parser) parseAnd(requireAtomics bool) Node {
+func (p *parser) parseAnd(requireLiterals bool) Node {
 	n := p.newAndNode(p.peek().pos)
 
 	var nn Node
-	if requireAtomics {
+	if requireLiterals {
 		nn = p.parseValue()
 	} else {
 		nn = p.parseNot()
@@ -174,7 +174,7 @@ func (p *parser) parseAnd(requireAtomics bool) Node {
 
 		p.next()
 		p.eatSpace()
-		if requireAtomics {
+		if requireLiterals {
 			nn = p.parseValue()
 		} else {
 			nn = p.parseNot()
