@@ -32,37 +32,40 @@ type itemType int
 const (
 	itemError itemType = iota // error occurred; value is text of error
 	itemEOF
-	itemSpace         // run of spaces
-	itemBool          // boolean constant
-	itemString        // string (includes quotes)
-	itemOr            // 'or'
-	itemAnd           // 'and'
-	itemNot           // 'not'
-	itemLeftParen     // '('
-	itemRightParen    // ')'
-	itemLeftBrace     // '{'
-	itemRightBrace    // '{'
-	itemColon         // ':'
-	itemWildcard      // '*'
-	itemRangeOperator // '<=' or '<' or '>=' or '>'
+	itemSpace               // run of spaces
+	itemBool                // boolean constant
+	itemString              // string (includes quotes)
+	itemOr                  // 'or'
+	itemAnd                 // 'and'
+	itemNot                 // 'not'
+	itemLeftParen           // '('
+	itemRightParen          // ')'
+	itemLeftBrace           // '{'
+	itemRightBrace          // '{'
+	itemColon               // ':'
+	itemWildcard            // '*'
+	itemRangeOperator       // '<=' or '<' or '>=' or '>'
+	itemContainmentOperator // '<@' or '>@' (based on Postgres syntax)
 )
 
 // Make the types pretty printable.
 var itemName = map[itemType]string{
-	itemError:         "error",
-	itemEOF:           "EOF",
-	itemSpace:         "space",
-	itemBool:          "bool",
-	itemString:        "string",
-	itemOr:            "or",
-	itemAnd:           "and",
-	itemNot:           "not",
-	itemLeftParen:     "(",
-	itemRightParen:    ")",
-	itemLeftBrace:     "{",
-	itemRightBrace:    "}",
-	itemColon:         ":",
-	itemRangeOperator: "range",
+	itemError:               "error",
+	itemEOF:                 "EOF",
+	itemSpace:               "space",
+	itemBool:                "bool",
+	itemString:              "string",
+	itemOr:                  "or",
+	itemAnd:                 "and",
+	itemNot:                 "not",
+	itemLeftParen:           "(",
+	itemRightParen:          ")",
+	itemLeftBrace:           "{",
+	itemRightBrace:          "}",
+	itemColon:               ":",
+	itemRangeOperator:       "range",
+	itemWildcard:            "wildcard",
+	itemContainmentOperator: "containment",
 }
 
 func (i itemType) String() string {
@@ -232,7 +235,15 @@ func lexExpression(l *lexer) stateFn {
 		return l.emit(itemColon)
 	case r == '"':
 		return lexQuote
-	case r == '<' || r == '>':
+	case r == '<':
+		if l.peek() == '@' {
+			return lexContainmentOperator
+		}
+		return lexRangeOperator
+	case r == '>':
+		if l.peek() == '@' {
+			return lexContainmentOperator
+		}
 		return lexRangeOperator
 	case r == '*':
 		return l.emit(itemWildcard)
@@ -412,6 +423,12 @@ func lexRangeOperator(l *lexer) stateFn {
 	// we already consumed > or <, so check for optional =
 	l.accept("=")
 	return l.emit(itemRangeOperator)
+}
+
+func lexContainmentOperator(l *lexer) stateFn {
+	// we already consumed > or <, so check for @
+	l.accept("@")
+	return l.emit(itemContainmentOperator)
 }
 
 // isSpace reports whether r is a space character.

@@ -12,10 +12,10 @@ type Filter struct {
 
 type Clause struct {
 	Field string
-	// One of the following: `=`, `<`, `<=`, `>`, `>=`, `IN`
+	// One of the following: `=`, `<`, `<=`, `>`, `>=`, `IN`, `<@`, `>@`
 	Operator string
 	// List of values for the clause.
-	// For `IN` operator, this is a list of values to match against.
+	// For `IN`, `<@` and `>@` operators, this is a list of values to match against.
 	// For other operators, this is a list of one string.
 	Values []string
 }
@@ -90,6 +90,8 @@ func convertToFilter(ast Node) (Filter, error) {
 		return convertIsNode(n)
 	case *RangeNode:
 		return convertRangeNode(n)
+	case *ContainmentNode:
+		return convertContainmentNode(n)
 	case *NotNode:
 		return convertNotNode(n)
 	case *LiteralNode:
@@ -140,6 +142,8 @@ func convertAndNode(ast *AndNode) (Filter, error) {
 			f, err = convertNotNode(n)
 		case *RangeNode:
 			f, err = convertRangeNode(n)
+		case *ContainmentNode:
+			f, err = convertContainmentNode(n)
 		case *LiteralNode:
 			f, err = convertLiteralNode(n)
 		default:
@@ -227,6 +231,37 @@ func convertRangeNode(ast *RangeNode) (Filter, error) {
 				Field:    ast.Identifier,
 				Operator: operator,
 				Values:   []string{value},
+			},
+		},
+	}, nil
+}
+
+func convertContainmentNode(ast *ContainmentNode) (Filter, error) {
+	var values []string
+	switch n := ast.Value.(type) {
+	case *LiteralNode:
+		values = []string{n.Value}
+	case *AndNode:
+		for _, node := range n.Nodes {
+			literalNode, ok := node.(*LiteralNode)
+			if !ok {
+				return Filter{}, fmt.Errorf("unsupported node type %T", node)
+			}
+			values = append(values, literalNode.Value)
+		}
+	default:
+		return Filter{}, fmt.Errorf("unsupported node type %T", ast.Value)
+	}
+	operator := ast.Operator.String()
+	if operator == "???" {
+		return Filter{}, fmt.Errorf("unsupported operator %s", operator)
+	}
+	return Filter{
+		Clauses: []Clause{
+			{
+				Field:    ast.Identifier,
+				Operator: operator,
+				Values:   values,
 			},
 		},
 	}, nil
