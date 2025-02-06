@@ -374,12 +374,12 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 				if !fieldConfig.AllowContainedBy {
 					return nil, nil, fmt.Errorf("operator %s not supported for field: %s", operator, clause.Field)
 				}
-				condAnds = append(condAnds, fmt.Sprintf("ARRAY_LENGTH(%s) = ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(%s) AS x WHERE ARRAY_CONTAINS(@%s, x)))", columnName, columnName, paramName))
+				condAnds = append(condAnds, fmt.Sprintf("ARRAY_LENGTH(%s) = ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(%s) AS x WHERE x IN UNNEST(@%s)))", columnName, columnName, paramName))
 			case ">@":
 				if !fieldConfig.AllowContains {
 					return nil, nil, fmt.Errorf("operator %s not supported for field: %s", operator, clause.Field)
 				}
-				condAnds = append(condAnds, fmt.Sprintf("ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(@%s) AS x WHERE ARRAY_CONTAINS(%s, x))) = ARRAY_LENGTH(@%s)", paramName, columnName, paramName))
+				condAnds = append(condAnds, fmt.Sprintf("ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(@%s) AS x WHERE x IN UNNEST(%s))) = ARRAY_LENGTH(@%s)", paramName, columnName, paramName))
 			}
 		case "=":
 			var forceLowercase bool
