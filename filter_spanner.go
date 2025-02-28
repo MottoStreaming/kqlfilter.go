@@ -71,6 +71,10 @@ type FilterToSpannerFieldConfig struct {
 	AllowContains bool
 	// Allow this field to be queried with the contained by (`<@`) operator. Only works on arrays. Defaults to false.
 	AllowContainedBy bool
+	// Allow negation of the field. This will allow the user to query using != and NOT LIKE operators.
+	// It currently only works with equality operators on single values. `IN`, `>@`, `<@` and range operators are not supported.
+	// Defaults to false.
+	AllowNegation bool
 	// A list of aliases for this field. Can be used if you want to allow users to use different field names to filter
 	// on the same column. Useful e.g. to allow different naming conventions, like `type_id` and `typeId`.
 	Aliases []string
@@ -381,7 +385,11 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 				}
 				condAnds = append(condAnds, fmt.Sprintf("ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(@%s) AS x WHERE x IN UNNEST(%s))) = ARRAY_LENGTH(@%s)", paramName, columnName, paramName))
 			}
-		case "=":
+		case "=", "!=":
+			if !fieldConfig.AllowNegation && operator == "!=" {
+				return nil, nil, fmt.Errorf("operator %s not supported for field: %s", operator, clause.Field)
+			}
+
 			var forceLowercase bool
 
 			// Prefix and suffix matching is supported only for single strings
@@ -391,17 +399,29 @@ func (f Filter) ToSpannerSQL(fieldConfigs map[string]FilterToSpannerFieldConfig)
 				needsSuffixMatch := fieldConfig.AllowSuffixMatch && strings.HasPrefix(mappedString, "*")
 
 				if needsPrefixMatch && needsSuffixMatch {
-					operator = " LIKE "
+					if operator == "!=" {
+						operator = " NOT LIKE "
+					} else {
+						operator = " LIKE "
+					}
 					forceLowercase = true
 					mappedString = escapePrefixSuffixSpecialChars(mappedString)
 					mappedValue = "%" + mappedString[1:len(mappedString)-1] + "%"
 				} else if needsPrefixMatch {
-					operator = " LIKE "
+					if operator == "!=" {
+						operator = " NOT LIKE "
+					} else {
+						operator = " LIKE "
+					}
 					forceLowercase = true
 					mappedString = escapePrefixSuffixSpecialChars(mappedString)
 					mappedValue = mappedString[:len(mappedString)-1] + "%"
 				} else if needsSuffixMatch {
-					operator = " LIKE "
+					if operator == "!=" {
+						operator = " NOT LIKE "
+					} else {
+						operator = " LIKE "
+					}
 					forceLowercase = true
 					mappedString = escapePrefixSuffixSpecialChars(mappedString)
 					mappedValue = "%" + mappedString[1:]
