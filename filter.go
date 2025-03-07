@@ -28,7 +28,19 @@ func Parse(input string) (Filter, error) {
 	if strings.TrimSpace(input) == "" {
 		return Filter{}, nil
 	}
-	ast, err := ParseAST(input, WithMaxDepth(2))
+	options := []ParserOption{WithMaxDepth(2), WithMaxComplexity(75)}
+	ast, err := ParseAST(input, options...)
+	if err != nil {
+		return Filter{}, err
+	}
+	return convertToFilter(ast)
+}
+
+func ParseWithOptions(input string, options ...ParserOption) (Filter, error) {
+	if strings.TrimSpace(input) == "" {
+		return Filter{}, nil
+	}
+	ast, err := ParseAST(input, options...)
 	if err != nil {
 		return Filter{}, err
 	}
